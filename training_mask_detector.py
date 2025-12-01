@@ -6,9 +6,10 @@ from imutils import paths
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pickle
 
 INIT_LR = 1e-4
-EPOCHS = 20
+EPOCHS = 10
 BS = 32
 
 # Load and preprocess dataset by transforming images into arrays and appending labels
@@ -32,9 +33,11 @@ for class_name in classes:
         labels.append(class_name)
 
 
-# One-hot encode the labels
+# One-hot encode the labels and save the label binarizer for inference
 lb = sk_pre.LabelBinarizer()
 labels = lb.fit_transform(labels)
+with open('label_binarizer.pickle', 'wb') as f:
+    pickle.dump(lb, f)
 labels = utils.to_categorical(labels)
 data = np.array(data, dtype="float32")
 labels = np.array(labels)
@@ -42,10 +45,10 @@ labels = np.array(labels)
 # Split the dataset and construct training and testing sets
 (trainX, testX, trainY, testY) = sk_model.train_test_split(data, labels, test_size=0.20, stratify=labels, random_state=42)
 aug = preprocessing.image.ImageDataGenerator(
-    rotation_range=10,
+    rotation_range=20,
     zoom_range=0.15,
-    width_shift_range=0.15,
-    height_shift_range=0.15,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
     shear_range=0.15,
     horizontal_flip=True,
     fill_mode="nearest"
@@ -66,14 +69,22 @@ for layer in baseModel.layers:
     layer.trainable = False
 
 optimizer = keras.optimizers.Adam(learning_rate=INIT_LR, decay=INIT_LR / EPOCHS)
-model.compile(loss="binary_crossentropy", optimizer=optimizer, metrics=["accuracy"])
+model.compile(loss="categorical_crossentropy", optimizer=optimizer, metrics=["accuracy"])
+
+# Callbacks: early stop, save best model, reduce LR on plateau
+callbacks = [
+    keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
+    keras.callbacks.ModelCheckpoint('best_mask_detector.keras', monitor='val_loss', save_best_only=True),
+    keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=2)
+]
 
 head = model.fit(
     aug.flow(trainX, trainY, batch_size=BS),
     steps_per_epoch=len(trainX) // BS,
     validation_data=(testX, testY),
     validation_steps=len(testX) // BS,
-    epochs=EPOCHS
+    epochs=EPOCHS,
+    callbacks=callbacks
 )
 
 # Evaluate the model using predictions
@@ -82,7 +93,8 @@ predIdxs = np.argmax(predIdxs, axis=1)
 print(sk_metrics.classification_report(testY.argmax(axis=1), predIdxs, target_names=lb.classes_))
 
 # Save the trained model
-model.save("mask_detector.h5")
+# Save final model (also best model saved by ModelCheckpoint)
+model.save("mask_detector.keras")
 
 # Plot training loss and accuracy
 N = EPOCHS
