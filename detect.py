@@ -1,6 +1,10 @@
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.preprocessing.image import img_to_array
-from tensorflow.keras.models import load_model
+import keras 
+from keras.preprocessing.image import img_to_array
+from keras.models import load_model
+from keras.applications.mobilenet_v2 import preprocess_input
+#from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+#from tensorflow.keras.preprocessing.image import img_to_array
+#from tensorflow.keras.models import load_model
 from imutils.video import VideoStream
 import numpy as np
 import imutils

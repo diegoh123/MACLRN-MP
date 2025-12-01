@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import applications, preprocessing, layers, models, utils
+#from tensorflow.keras import applications, preprocessing, layers, models, utils
+from keras import applications, preprocessing, layers, models, utils
 from sklearn import preprocessing as sk_pre, model_selection as sk_model, metrics as sk_metrics
 from imutils import paths
 import matplotlib.pyplot as plt
