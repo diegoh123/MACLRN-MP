@@ -16,18 +16,33 @@ import requests
 recent_frames = []
 MAX_FRAMES = 30	
 frame_count = 0 
+MODEL_DIR = "tier2_cloud/cloud_storage/models"
 
 def load_latest_model():
-	model_files = [f for f in os.listdir("models") if f.startswith("mask_detector_v") and f.endswith(".keras")]
+    os.makedirs(MODEL_DIR, exist_ok=True)
 
-	if not model_files:
-		print("No model files found.")
-		return load_model("mask_detector.keras")  # Load default model
-	
-	model_files.sort()
-	latest = model_files[-1]
-	print(f"Loading latest model: {latest}")
-	return load_model(latest)
+    model_files = [
+        f for f in os.listdir(MODEL_DIR)
+        if f.startswith("mask_detector_v") and f.endswith(".keras")
+    ]
+
+    if not model_files:
+        print("[WARN] No versioned models found. Loading fallback mask_detector.keras")
+
+        if os.path.exists("mask_detector.keras"):
+            return load_model("mask_detector.keras")
+        else:
+            raise FileNotFoundError("No model found: mask_detector.keras missing!")
+
+    
+    model_files.sort()
+    latest = model_files[-1]
+
+    full_path = os.path.join(MODEL_DIR, latest)
+    print(f"[INFO] Loading latest local model: {full_path}")
+
+    return load_model(full_path)
+
 	
 def evaluate_model(model, samples): #get ave score of model on recent frames
 	scores = []
@@ -46,10 +61,11 @@ def evaluate_model(model, samples): #get ave score of model on recent frames
 	return sum(scores) / len(scores) if scores else 0.0
 
 def download_cloud_model(): #get latest model from cloud server
-    url = "https://mask-detection-system.onrender.com/model/latest"
-
+    url = "http://localhost:5000/model/latest"
+	#url = "https://mask-detection-system.onrender.com/model/latest"
+	
     try:
-        r = requests.get(url, timeout=5)
+        r = requests.get(url, timeout=30)
         if r.status_code != 200:
             print("[INFO] No model downloaded.")
             return None
@@ -61,7 +77,7 @@ def download_cloud_model(): #get latest model from cloud server
         else:
             filename = "mask_detector_unknown.keras"
 
-        save_path = os.path.join("models", filename)
+        save_path = os.path.join(MODEL_DIR, filename)
         with open(save_path, "wb") as f:
             f.write(r.content)
 
@@ -71,23 +87,6 @@ def download_cloud_model(): #get latest model from cloud server
     except Exception as e:
         print("Download failed:", e)
         return None
-
-
-def load_latest_model(): #get curr model
-    model_files = [
-        f for f in os.listdir("models")
-        if f.startswith("mask_detector_v") and f.endswith(".keras")
-    ]
-
-    if not model_files:
-        print("[WARN] No local versioned models. Using default mask_detector.keras.")
-        return load_model("mask_detector.keras")
-
-    model_files.sort()
-    latest = model_files[-1]
-
-    print(f"[INFO] Loading latest local model: {latest}")
-    return load_model(os.path.join("models", latest))
 
 
 def detect_and_predict_mask(frame, faceNet, maskNet):
@@ -176,7 +175,7 @@ while True:
 
 			#send the data from detection to cloud server
 			try:
-				_, img_encoded = cv2.imencode('.jpg', frame)
+				_, img_encoded = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
 
 				files = {"image": ('frame.jpg', img_encoded.tobytes(), 'image/jpeg')}
 
@@ -187,10 +186,11 @@ while True:
 				}
 
 				res = requests.post(
-					"https://mask-detection-system.onrender.com/upload",
+					"http://localhost:5000/upload",
+					#"https://mask-detection-system.onrender.com/upload",
 					files=files,
 					data=data,
-					timeout=5
+					timeout=30
 				)
 
 				print("Uploaded:", res.json())
@@ -198,7 +198,7 @@ while True:
 				print("Failed to upload:", e)
 
 	frame_count += 1
-	if frame_count % 500 == 0:
+	if frame_count % 1500 == 0:
 		new_file = download_cloud_model()
 		if new_file:
 			temp_path = os.path.join("models", new_file)
