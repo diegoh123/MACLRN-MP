@@ -28,7 +28,7 @@ def get_uploaded_images():
     images = []
     labels = []
 
-    labeled_docs = uploads_col.find({"correct": {"$in": ["with_mask", "without_mask"]}})
+    labeled_docs = uploads_col.find({"correct": {"$in": ["with_mask", "without_mask", "improper_mask"]}})
 
     count = 0
 
