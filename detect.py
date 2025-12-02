@@ -7,6 +7,7 @@ import imutils
 import time
 import cv2
 import os
+import pickle
 
 def detect_and_predict_mask(frame, faceNet, maskNet):
 	(h, w) = frame.shape[:2]
@@ -52,7 +53,13 @@ prototxtPath = "./face_detector/deploy.prototxt"
 weightsPath = "./face_detector/res10_300x300_ssd_iter_140000.caffemodel"
 faceNet = cv2.dnn.readNet(prototxtPath, weightsPath)
 maskNet = load_model("mask_detector.keras")
+
+# Load label mapping so we do not hardcode class names/order
+with open("label_binarizer.pickle", "rb") as f:
+    lb = pickle.load(f)
+
 vs = VideoStream(src=0).start()
+
 
 # loop over the frames from the video stream
 while True:
@@ -65,12 +72,25 @@ while True:
 	# loop over the detected face locations
 	for (box, pred) in zip(locs, preds):
 		(startX, startY, endX, endY) = box
-		(mask, withoutMask) = pred
 
-		# rgb value for frames and text
-		label = "Mask" if mask > withoutMask else "No Mask"
-		color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
-		label = "{}: {:.2f}%".format(label, max(mask, withoutMask) * 100)
+		# Get the index of the highest probability
+		class_idx = int(np.argmax(pred))
+		internal_label = lb.classes_[class_idx]   # e.g., "with_mask", "without_mask", "improper_mask"
+		prob = float(pred[class_idx])
+
+		# Map internal labels to display text + colors
+		if internal_label == "with_mask":
+			display_label = "Mask"
+			color = (0, 255, 0)
+		elif internal_label == "without_mask":
+			display_label = "No Mask"
+			color = (0, 0, 255)
+		else:
+			display_label = "Improper Mask"
+			color = (0, 255, 255)  # yellow-ish
+
+		label = "{}: {:.2f}%".format(display_label, prob * 100)
+
 
 		# display output frame
 		cv2.putText(frame, label, (startX, startY - 10),

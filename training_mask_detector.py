@@ -14,7 +14,7 @@ BS = 32
 
 # Load and preprocess dataset by transforming images into arrays and appending labels
 dir = "./dataset"
-classes = ["with_mask", "without_mask"]
+classes = ["with_mask", "without_mask", "improper_mask"]
 data = []
 labels = []
 
@@ -36,11 +36,19 @@ for class_name in classes:
 # One-hot encode the labels and save the label binarizer for inference
 lb = sk_pre.LabelBinarizer()
 labels = lb.fit_transform(labels)
+
+# Save the label binarizer for inference
 with open('label_binarizer.pickle', 'wb') as f:
     pickle.dump(lb, f)
-labels = utils.to_categorical(labels)
+
+# For 2 classes, LabelBinarizer returns shape (N, 1) so we expand.
+# For 3+ classes, it already returns one-hot of shape (N, num_classes).
+if len(lb.classes_) == 2:
+    labels = utils.to_categorical(labels)
+
 data = np.array(data, dtype="float32")
 labels = np.array(labels)
+
 
 # Split the dataset and construct training and testing sets
 (trainX, testX, trainY, testY) = sk_model.train_test_split(data, labels, test_size=0.20, stratify=labels, random_state=42)
@@ -61,7 +69,7 @@ headModel = layers.AveragePooling2D(pool_size=(7, 7))(headModel)
 headModel = layers.Flatten(name="flatten")(headModel)
 headModel = layers.Dense(128, activation="relu")(headModel)
 headModel = layers.Dropout(0.5)(headModel)
-headModel = layers.Dense(2, activation="softmax")(headModel)
+headModel = layers.Dense(len(lb.classes_), activation="softmax")(headModel)
 model = models.Model(inputs=baseModel.input, outputs=headModel)
 
 # Freeze the base model layers (as to not update during first training process)
