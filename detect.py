@@ -201,7 +201,7 @@ while True:
 	if frame_count % 1500 == 0:
 		new_file = download_cloud_model()
 		if new_file:
-			temp_path = os.path.join("models", new_file)
+			temp_path = os.path.join(MODEL_DIR, new_file)
 
 			try:
 				temp_model = load_model(temp_path)

@@ -28,7 +28,7 @@ def get_uploaded_images():
     images = []
     labels = []
 
-    labeled_docs = uploads_col.find({"correct": {"$in": ["with_mask", "without_mask", "improper_mask"]}})
+    labeled_docs = uploads_col.find({"correct": {"$in": ["with_mask", "without_mask"]}})
 
     count = 0
 
@@ -41,8 +41,10 @@ def get_uploaded_images():
             print(f"[WARNING] Image file {img_path} not found, skipping...")
             continue
 
-        img = preprocessing.image.load_img(img_path, target_size=(224, 224))
-        img = img.convert("RGB")  # fix palette/transparency images
+        img = preprocessing.image.load_img(img_path)
+        if img.mode != "RGB":
+            img = img.convert("RGBA").convert("RGB")
+        img = image.resize((224,224))  # MobileNetV2 size
         img = preprocessing.image.img_to_array(img)
         img = applications.mobilenet_v2.preprocess_input(img)
 
