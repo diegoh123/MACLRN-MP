@@ -29,6 +29,10 @@ except Exception as e:
 def ping():
     return {"status": "success", "message": "pong!"}
 
+def save_async(image, save_path, record):
+    image.save(save_path)
+    uploads.insert_one(record)
+
 #send new data + metadata to db
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -53,15 +57,40 @@ def upload_file():
     })
     return {"status": "success", "message": "File uploaded successfully", "filename": filename}
 
-#update model in cloud
-@app.route("/model/latest")
-def model_latest():
-    models = sorted(os.listdir(MODEL_FOLDER))
-    if not models:
-        return {"error": "no models found"}, 404
-    
-    latest = models[-1]
-    return send_file(os.path.join(MODEL_FOLDER, latest), as_attachment=True)
+
+#get model in cloud (keras)
+@app.route("/model/latest/keras")
+def model_latest_keras():
+    # Get all KERAS model files
+    keras_files = sorted([
+        f for f in os.listdir(MODEL_FOLDER)
+        if f.endswith(".keras")
+    ])
+
+    if not keras_files:
+        return {"error": "No .keras models found"}, 404
+
+    latest = keras_files[-1]
+    full_path = os.path.join(MODEL_FOLDER, latest)
+
+    return send_file(full_path, as_attachment=True)
+
+#get model in cloud (json)
+@app.route("/model/latest/json")
+def model_latest_json():
+    # Get all metadata JSON files
+    json_files = sorted([
+        f for f in os.listdir(MODEL_FOLDER)
+        if f.endswith("_metadata.json")
+    ])
+
+    if not json_files:
+        return {"error": "No metadata found"}, 404
+
+    latest = json_files[-1]
+    full_path = os.path.join(MODEL_FOLDER, latest)
+
+    return send_file(full_path, as_attachment=True, mimetype="application/json")
 
 #for human labeling
 @app.route("/label", methods=["POST"])
