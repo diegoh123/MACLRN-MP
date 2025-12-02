@@ -3,3 +3,11 @@ gunicorn
 pymongo
 python-dotenv
 werkzeug
+tensorflow
+keras
+imutils
+numpy
+opencv-python
+matplotlib
+argparse
+scipy

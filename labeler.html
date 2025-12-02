@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mask Labeling Tool</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f3f3f3;
+            text-align: center;
+            padding: 30px;
+        }
+
+        #image-container {
+            margin-top: 20px;
+        }
+
+        img {
+            max-width: 60%;
+            border-radius: 10px;
+            border: 3px solid #444;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .mask { background: #4caf50; color: white; }
+        .nomask { background: #f44336; color: white; }
+        .incorrect { background: #ff9800; color: white; }
+        .skip { background: #9e9e9e; color: white; }
+
+        #status {
+            margin-top: 20px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mask Detection - Human Labeling Tool</h1>
+    <p>Select the correct label for the shown image.</p>
+
+    <div id="image-container">
+        <h3 id="filename"></h3>
+        <img id="preview" src="">
+    </div>
+
+    <div>
+        <button class="btn mask" onclick="submitLabel('with_mask')">Mask</button>
+        <button class="btn nomask" onclick="submitLabel('without_mask')">No Mask</button>
+        <button class="btn incorrect" onclick="submitLabel('incorrect')">Incorrect</button>
+        <button class="btn skip" onclick="loadNext()">Skip</button>
+    </div>
+
+    <div id="status"></div>
+
+    <script>
+        let queue = [];
+
+        // FIXED: images must now be loaded through Flask API
+        const UPLOADS_PATH = "/uploads/";
+
+        async function fetchUnlabeled() {
+            const res = await fetch("/unlabeled");
+            queue = await res.json();
+            loadNext();
+        }
+
+        function loadNext() {
+            if (queue.length === 0) {
+                document.getElementById("status").innerHTML = "🎉 No more unlabeled images!";
+                document.getElementById("preview").src = "";
+                document.getElementById("filename").innerHTML = "";
+                return;
+            }
+
+            const img = queue.pop();
+            window.currentImage = img.filename;
+
+            document.getElementById("filename").innerHTML = img.filename;
+            document.getElementById("preview").src = UPLOADS_PATH + img.filename;
+
+            document.getElementById("status").innerHTML = "";
+        }
+
+        async function submitLabel(correctLabel) {
+            let form = new FormData();
+            form.append("filename", window.currentImage);
+            form.append("correct", correctLabel);
+
+            let res = await fetch("/label", {
+                method: "POST",
+                body: form
+            });
+
+            let json = await res.json();
+            document.getElementById("status").innerHTML = json.message;
+
+            loadNext();
+        }
+
+        fetchUnlabeled();
+    </script>
+</body>
+</html>

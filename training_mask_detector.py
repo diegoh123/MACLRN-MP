@@ -8,10 +8,51 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
+from pymongo import MongoClient
+
+MONGODB_URI = os.getenv("MONGODB_URI")
+client = MongoClient(MONGODB_URI)
+
+db = client['maclrn_db']
+uploads_col = db['uploads']
 
 INIT_LR = 1e-4
 EPOCHS = 10
 BS = 32
+MODEL_DIR = "tier2_cloud/cloud_storage/models/"
+UPLOAD_DIR = "tier2_cloud/cloud_storage/uploads/"
+
+def get_uploaded_images():
+    print("[INFO] Loading uploaded images...")
+
+    images = []
+    labels = []
+
+    labeled_docs = uploads_col.find({"correct": {"$in": ["with_mask", "without_mask"]}})
+
+    count = 0
+
+    for doc in labeled_docs:
+        filename = doc['filename']
+        label = doc['correct']
+        img_path = os.path.join(UPLOAD_DIR, filename)
+
+        if not os.path.exists(img_path):
+            print(f"[WARNING] Image file {img_path} not found, skipping...")
+            continue
+
+        img = preprocessing.image.load_img(img_path, target_size=(224, 224))
+        img = img.convert("RGB")  # fix palette/transparency images
+        img = preprocessing.image.img_to_array(img)
+        img = applications.mobilenet_v2.preprocess_input(img)
+
+        images.append(img)
+        labels.append(label)
+        count += 1
+
+    print(f"[INFO] Loaded {count} labeled images from database.")
+    return images, labels
+
 
 # Load and preprocess dataset by transforming images into arrays and appending labels
 dir = "./dataset"
@@ -19,6 +60,7 @@ classes = ["with_mask", "without_mask"]
 data = []
 labels = []
 
+print("[INFO] Loading images from dataset...")
 for class_name in classes:
     class_dir = os.path.join(dir, class_name)
     image_paths = list(paths.list_images(class_dir))
@@ -33,6 +75,11 @@ for class_name in classes:
         data.append(image)
         labels.append(class_name)
 
+print("[INFO] Loaded images from dataset.")
+
+uploaded_imgs, uploaded_labels = get_uploaded_images()
+data.extend(uploaded_imgs)
+labels.extend(uploaded_labels)
 
 # One-hot encode the labels and save the label binarizer for inference
 lb = sk_pre.LabelBinarizer()
@@ -95,7 +142,23 @@ print(sk_metrics.classification_report(testY.argmax(axis=1), predIdxs, target_na
 
 # Save the trained model
 # Save final model (also best model saved by ModelCheckpoint)
-model.save("mask_detector.keras")
+#model.save("mask_detector.keras")
+
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+existing = sorted([f for f in os.listdir(MODEL_DIR) if f.startswith("mask_detector")])
+
+if existing:
+    last_version = int(existing[-1].split("_v")[1].split(".")[0])
+    ver = last_version + 1
+else:
+    ver = 1
+
+filename = f"mask_detector_v{ver}.keras"
+save_path = os.path.join(MODEL_DIR, filename)
+
+model.save(save_path)
+print(f"[INFO] Saved model to {save_path}")
 
 # Plot training loss and accuracy
 N = EPOCHS

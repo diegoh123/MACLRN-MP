@@ -16,7 +16,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 #connect to db
 
 client = MongoClient(os.getenv("MONGODB_URI"))
-db = client['mask_detection_db']
+db = client['maclrn_db']
 uploads = db['uploads']
 
 try:
@@ -53,7 +53,7 @@ def upload_file():
     })
     return {"status": "success", "message": "File uploaded successfully", "filename": filename}
 
-#update model in cloud -> fix this so that if latest model flops get previously better one
+#update model in cloud
 @app.route("/model/latest")
 def model_latest():
     models = sorted(os.listdir(MODEL_FOLDER))
@@ -62,6 +62,43 @@ def model_latest():
     
     latest = models[-1]
     return send_file(os.path.join(MODEL_FOLDER, latest), as_attachment=True)
+
+#for human labeling
+@app.route("/label", methods=["POST"])
+def label_image():
+    filename = request.form.get("filename")
+    correct_label = request.form.get("correct")
+
+    if not filename or not correct_label:
+        return {"status": "error", "message": "Missing fields"}, 400
+
+    uploads.update_one(
+        {"filename": filename},
+        {"$set": {"correct": correct_label}}
+    )
+
+    return {"status": "success", "message": "Label updated successfully"}
+
+#get all unlabeled images
+@app.route("/unlabeled")
+def unlabeled():
+    docs = list(uploads.find({"correct": "unknown"}))
+    for d in docs:
+        d["_id"] = str(d["_id"])
+    return jsonify(docs)
+
+#get pic for html page
+@app.route("/uploads/<filename>")
+def serve_uploaded_image(filename):
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(path):
+        return {"error": "file not found"}, 404
+    return send_file(path)
+
+#go to labeler page
+@app.route("/labeler")
+def labeler():
+    return send_file("labeler.html")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
