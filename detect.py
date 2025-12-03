@@ -95,10 +95,10 @@ def load_best_model():
 
 def download_cloud_model():
     """Download latest model from cloud server"""
-    keras_url = "http://localhost:5000/model/latest/keras"
-    json_url = "http://localhost:5000/model/latest/json"
-    #keras_url = "https://mask-detection-system.onrender.com/model/latest/keras"
-    #json_url = "https://mask-detection-system.onrender.com/model/latest/json"
+    #keras_url = "http://localhost:5000/model/latest/keras"
+    #json_url = "http://localhost:5000/model/latest/json"
+    keras_url = "https://mask-detection-system.onrender.com/model/latest/keras"
+    json_url = "https://mask-detection-system.onrender.com/model/latest/json"
 
     try:
         r = requests.get(keras_url, timeout=120)
@@ -271,8 +271,8 @@ while True:
                 }
                 
                 res = requests.post(
-                    "http://localhost:5000/upload",
-                    #"https://mask-detection-system.onrender.com/upload",
+                    #"http://localhost:5000/upload",
+                    "https://mask-detection-system.onrender.com/upload",
                     files=files,
                     data=data,
                     timeout=120
