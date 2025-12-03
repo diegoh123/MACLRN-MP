@@ -23,6 +23,7 @@ client = MongoClient(MONGODB_URI)
 
 db = client["maclrn_db"]
 uploads_col = db["uploads"]
+fs = GridFS(db)
 
 DATASET_DIR = "./dataset"
 UPLOAD_DIR = "tier2_cloud/cloud_storage/uploads"
@@ -68,7 +69,8 @@ def load_realworld_labeled():
     for doc in docs:
         try:
             grid_file = fs.get(doc["file_id"])
-        except:
+        except Exception as e:
+            print("[WARN] Failed to load GridFS file:", e)
             continue
 
         img = Image.open(BytesIO(grid_file.read())).resize((224, 224)).convert("RGB")
@@ -78,7 +80,9 @@ def load_realworld_labeled():
         images.append(img)
         labels.append(doc["correct"])
 
+    print(f"[INFO] Loaded {len(images)} REAL-WORLD samples")
     return images, labels
+
 
 #balance datasets
 def balance_datasets(kaggle_imgs, kaggle_labels, real_imgs, real_labels):

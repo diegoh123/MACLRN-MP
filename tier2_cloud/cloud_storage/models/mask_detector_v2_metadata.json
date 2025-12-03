@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "filename": "mask_detector_v2.keras",
+  "val_accuracy": 0.5,
+  "val_loss": 1.07295823097229,
+  "train_accuracy": 0.4375,
+  "train_loss": 1.0113029479980469,
+  "epochs_trained": 10,
+  "kaggle_samples": 11176,
+  "real_samples": 10,
+  "total_samples": 20
+}

@@ -28,6 +28,7 @@
             font-size: 18px;
             cursor: pointer;
         }
+
         .mask { background: #4caf50; color: white; }
         .nomask { background: #f44336; color: white; }
         .incorrect { background: #ff9800; color: white; }
@@ -60,9 +61,8 @@
 
     <script>
         let queue = [];
-
-        // FIXED: images must now be loaded through Flask API
         const UPLOADS_PATH = "/uploads/";
+        let currentFileID = null;  // 🔥 Store the GridFS ID
 
         async function fetchUnlabeled() {
             const res = await fetch("/unlabeled");
@@ -78,18 +78,24 @@
                 return;
             }
 
-            const img = queue.pop();
-            window.currentImage = img.filename;
+            const imgDoc = queue.pop();
 
-            document.getElementById("filename").innerHTML = img.filename;
-            document.getElementById("preview").src = UPLOADS_PATH + img.filename;
+            // 🔥 Use file_id instead of filename
+            currentFileID = imgDoc.file_id;
+
+            document.getElementById("filename").innerText = imgDoc.file_id;
+
+            // 🔥 Load from GridFS endpoint
+            document.getElementById("preview").src = UPLOADS_PATH + imgDoc.file_id;
 
             document.getElementById("status").innerHTML = "";
         }
 
         async function submitLabel(correctLabel) {
+            if (!currentFileID) return;
+
             let form = new FormData();
-            form.append("filename", window.currentImage);
+            form.append("file_id", currentFileID);   // 🔥 FIXED
             form.append("correct", correctLabel);
 
             let res = await fetch("/label", {
@@ -98,12 +104,13 @@
             });
 
             let json = await res.json();
-            document.getElementById("status").innerHTML = json.message;
+            document.getElementById("status").innerHTML = json.message || "Saved";
 
             loadNext();
         }
 
         fetchUnlabeled();
     </script>
+
 </body>
 </html>

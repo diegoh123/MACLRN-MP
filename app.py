@@ -95,18 +95,26 @@ def model_latest_json():
 #for human labeling
 @app.route("/label", methods=["POST"])
 def label_image():
-    filename = request.form.get("filename")
+    file_id = request.form.get("file_id")
     correct_label = request.form.get("correct")
 
-    if not filename or not correct_label:
+    if not file_id or not correct_label:
         return {"status": "error", "message": "Missing fields"}, 400
 
-    uploads.update_one(
-        {"filename": filename},
-        {"$set": {"correct": correct_label}}
-    )
+    try:
+        result = uploads.update_one(
+            {"file_id": ObjectId(file_id)},
+            {"$set": {"correct": correct_label}}
+        )
 
-    return {"status": "success", "message": "Label updated successfully"}
+        if result.modified_count == 0:
+            return {"status": "error", "message": "No matching document"}, 404
+
+        return {"status": "success", "message": "Label saved!"}
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+
 
 #get unlabeled images
 @app.route("/unlabeled")
@@ -117,7 +125,6 @@ def unlabeled():
     for d in docs:
         d["_id"] = str(d["_id"])
         
-        # Convert GridFS file_id too
         if "file_id" in d:
             d["file_id"] = str(d["file_id"])
         
