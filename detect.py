@@ -284,7 +284,7 @@ while True:
     
     # Check for new model from cloud every 1500 frames
     frame_count += 1
-    if frame_count % 100 == 0:
+    if frame_count % 1500 == 0:
         new_file = download_cloud_model()
         if new_file:
             if not new_file.endswith(".keras"):
