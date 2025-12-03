@@ -11,3 +11,4 @@ opencv-python
 matplotlib
 argparse
 scipy
+boto3

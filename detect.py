@@ -95,10 +95,10 @@ def load_best_model():
 
 def download_cloud_model():
     """Download latest model from cloud server"""
-    #keras_url = "http://localhost:5000/model/latest/keras"
-    #json_url = "http://localhost:5000/model/latest/json"
-    keras_url = "https://mask-detection-system.onrender.com/model/latest/keras"
-    json_url = "https://mask-detection-system.onrender.com/model/latest/json"
+    keras_url = "http://localhost:5000/model/latest/keras"
+    json_url = "http://localhost:5000/model/latest/json"
+    #keras_url = "https://mask-detection-system.onrender.com/model/latest/keras"
+    #json_url = "https://mask-detection-system.onrender.com/model/latest/json"
 
     try:
         r = requests.get(keras_url, timeout=120)
@@ -271,8 +271,8 @@ while True:
                 }
                 
                 res = requests.post(
-                    #"http://localhost:5000/upload",
-                    "https://mask-detection-system.onrender.com/upload",
+                    "http://localhost:5000/upload",
+                    #"https://mask-detection-system.onrender.com/upload",
                     files=files,
                     data=data,
                     timeout=120
@@ -284,7 +284,7 @@ while True:
     
     # Check for new model from cloud every 1500 frames
     frame_count += 1
-    if frame_count % 1500 == 0:
+    if frame_count % 100 == 0:
         new_file = download_cloud_model()
         if new_file:
             if not new_file.endswith(".keras"):
@@ -323,12 +323,12 @@ while True:
                 else:
                     # No metadata available - fallback warning
                     print("[WARN] No metadata for comparison. Keeping current model.")
-                    os.remove(temp_path)
+                    #os.remove(temp_path)
             
             except Exception as e:
                 print("Model evaluation failed:", e)
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+                #if os.path.exists(temp_path):
+                    #os.remove(temp_path)
     
     cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF

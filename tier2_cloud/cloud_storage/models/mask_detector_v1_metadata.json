@@ -1,12 +1,18 @@
 {
   "version": 1,
   "filename": "mask_detector_v1.keras",
-  "val_accuracy": 0.5,
-  "val_loss": 1.1433395147323608,
-  "train_accuracy": 0.625,
-  "train_loss": 1.0144977569580078,
+  "val_accuracy": 0.989266574382782,
+  "val_loss": 0.0380207858979702,
+  "train_accuracy": 1.0,
+  "train_loss": 0.02736797370016575,
   "epochs_trained": 10,
-  "kaggle_samples": 11176,
-  "real_samples": 10,
-  "total_samples": 20
+  "total_samples": 11176,
+  "train_samples": 8940,
+  "test_samples": 2236,
+  "classes": [
+    "improper_mask",
+    "with_mask",
+    "without_mask"
+  ],
+  "model_type": "initial_training"
 }
