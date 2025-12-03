@@ -108,13 +108,23 @@ def label_image():
 
     return {"status": "success", "message": "Label updated successfully"}
 
-#get all unlabeled images
+#get unlabeled images
 @app.route("/unlabeled")
 def unlabeled():
     docs = list(uploads.find({"correct": "unknown"}))
+    
+    clean_docs = []
     for d in docs:
         d["_id"] = str(d["_id"])
-    return jsonify(docs)
+        
+        # Convert GridFS file_id too
+        if "file_id" in d:
+            d["file_id"] = str(d["file_id"])
+        
+        clean_docs.append(d)
+
+    return jsonify(clean_docs)
+
 
 #get pic for html page
 @app.route("/uploads/<file_id>")
