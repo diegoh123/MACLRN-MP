@@ -1,8 +1,11 @@
 import os
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 from datetime import datetime
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from gridfs import GridFS
+from bson.objectid import ObjectId
+import io
 
 app = Flask(__name__)
 
@@ -18,7 +21,8 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 client = MongoClient(os.getenv("MONGODB_URI"))
 db = client['maclrn_db']
 uploads = db['uploads']
-
+fs = GridFS(db)
+# Test connection
 try:
     client.admin.command('ping')
     print("Connected to MongoDB successfully!")
@@ -36,26 +40,22 @@ def save_async(image, save_path, record):
 #send new data + metadata to db
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    if "image" not in request.files:
-        return jsonify({"status": "error", "message": "No image part in the request"}), 400
-    
     image = request.files["image"]
     predicted = request.form.get("predicted")
     correct = request.form.get("correct")
     confidence = request.form.get("confidence")
 
-    filename = datetime.now().strftime("%Y%m%d%H%M%S") + ".jpg"
-    save_path = os.path.join(UPLOAD_FOLDER, filename)
-    image.save(save_path)
+    file_id = fs.put(image.read(), filename=image.filename)
 
     uploads.insert_one({
-        "filename": filename,                                                       #picture
-        "predicted": predicted,                                                     #label predicted by model
-        "correct": correct,                                                         #if correct/no
-        "confidence": float(confidence) if confidence else None,                #model confidence
-        "timestamp": datetime.now()                                              #upload time
+        "file_id": file_id,
+        "predicted": predicted,
+        "correct": correct,
+        "confidence": float(confidence),
+        "timestamp": datetime.now()
     })
-    return {"status": "success", "message": "File uploaded successfully", "filename": filename}
+
+    return {"status": "success", "file_id": str(file_id)}
 
 
 #get model in cloud (keras)
@@ -117,12 +117,13 @@ def unlabeled():
     return jsonify(docs)
 
 #get pic for html page
-@app.route("/uploads/<filename>")
-def serve_uploaded_image(filename):
-    path = os.path.join(UPLOAD_FOLDER, filename)
-    if not os.path.exists(path):
-        return {"error": "file not found"}, 404
-    return send_file(path)
+@app.route("/uploads/<file_id>")
+def serve_uploaded_image(file_id):
+    try:
+        grid_out = fs.get(ObjectId(file_id))
+        return Response(grid_out.read(), mimetype="image/jpeg")
+    except:
+        return {"error": "Image not found"}, 404
 
 #go to labeler page
 @app.route("/labeler")

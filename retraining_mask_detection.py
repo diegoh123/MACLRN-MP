@@ -11,6 +11,9 @@ from tensorflow import keras
 from tensorflow.keras import applications, preprocessing, layers, models, utils
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
+from io import BytesIO
+from PIL import Image
+from gridfs import GridFS
 
 load_dotenv()
 
@@ -58,39 +61,24 @@ def load_kaggle_dataset():
 
 #get from db
 def load_realworld_labeled():
-    print("[INFO] Loading REAL-WORLD labeled images...")
-
     images, labels = [], []
 
-    docs = uploads_col.find({
-        "correct": {"$in": CLASSES}  # ignore 'unknown'
-    })
-
-    count = 0
+    docs = uploads_col.find({"correct": {"$in": CLASSES}})
 
     for doc in docs:
-        filename = doc.get("filename")
-        label = doc.get("correct")
-
-        if not filename or not label:
+        try:
+            grid_file = fs.get(doc["file_id"])
+        except:
             continue
 
-        path = os.path.join(UPLOAD_DIR, filename)
-        if not os.path.exists(path):
-            continue
-
-        img = preprocessing.image.load_img(path, target_size=(224, 224))
-        img = img.convert("RGB")
-        img = preprocessing.image.img_to_array(img)
+        img = Image.open(BytesIO(grid_file.read())).resize((224, 224)).convert("RGB")
+        img = np.array(img)
         img = applications.mobilenet_v2.preprocess_input(img)
 
         images.append(img)
-        labels.append(label)
-        count += 1
+        labels.append(doc["correct"])
 
-    print(f"[INFO] Loaded {count} REAL-WORLD labeled samples")
     return images, labels
-
 
 #balance datasets
 def balance_datasets(kaggle_imgs, kaggle_labels, real_imgs, real_labels):
